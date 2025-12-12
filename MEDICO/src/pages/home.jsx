@@ -1,10 +1,38 @@
 // src/pages/home.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function Home() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [backendMessage, setBackendMessage] = useState(""); // state for backend message
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const navigate = useNavigate();
+
+  // Check login state on mount
+  useEffect(() => {
+    const user = localStorage.getItem("user");
+    setIsLoggedIn(!!user);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    setIsLoggedIn(false);
+    setDropdownOpen(false);
+    navigate("/login");
+  };
+
+  // Fetch backend message when component mounts
+  // Fetch backend message when component mounts
+  /*useEffect(() => {
+    fetch("http://localhost:5001/api/message") // ← use API route instead of "/"
+      .then(res => res.text())
+      .then(data => setBackendMessage(data))
+      .catch(err => {
+        console.error(err);
+        setBackendMessage(""); // keep box empty if backend fails
+      });
+  }, []);*/
+
 
   return (
     <div className="w-full min-h-screen bg-white overflow-hidden">
@@ -12,9 +40,9 @@ export default function Home() {
       <header className="w-full h-24 bg-sky-500 flex items-center px-10 justify-between relative">
         {/* Logo */}
         <img
-          src="https://placehold.co/150x70"
+          src="/src/assets/login-banner.png"
           alt="MEDICO Logo"
-          className="w-36 h-16 rounded-3xl cursor-pointer"
+          className="w-36 h-16 rounded-3xl cursor-pointer object-contain bg-white p-2 shadow-lg"
           onClick={() => navigate("/")}
         />
 
@@ -24,8 +52,18 @@ export default function Home() {
             Home
           </button>
           <button className="hover:text-white transition">Consultations</button>
-          <button className="hover:text-white transition">Medical History</button>
-          <button className="hover:text-white transition">About</button>
+          <button
+            onClick={() => navigate("/medical-history")}
+            className="text-black hover:text-gray-300 font-medium text-xl"
+          >
+            Medical History
+          </button>
+          <button
+            onClick={() => navigate("/prescription")}
+            className="text-black hover:text-white transition font-medium text-xl"
+          >
+            Prescription
+          </button>
         </div>
 
         {/* Hamburger Menu */}
@@ -44,18 +82,28 @@ export default function Home() {
           {/* Dropdown Menu */}
           {dropdownOpen && (
             <div className="absolute right-0 top-20 w-52 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50">
+
               <button
                 onClick={() => { navigate("/cart"); setDropdownOpen(false); }}
                 className="w-full text-left px-6 py-4 hover:bg-sky-50 transition font-medium text-gray-800 flex items-center gap-3"
               >
                 Cart
               </button>
-              <button
-                onClick={() => { navigate("/login"); setDropdownOpen(false); }}
-                className="w-full text-left px-6 py-4 hover:bg-sky-50 transition font-medium text-gray-800 flex items-center gap-3"
-              >
-                Login
-              </button>
+              {isLoggedIn ? (
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-6 py-4 hover:bg-sky-50 transition font-medium text-red-600 flex items-center gap-3"
+                >
+                  Logout
+                </button>
+              ) : (
+                <button
+                  onClick={() => { navigate("/login"); setDropdownOpen(false); }}
+                  className="w-full text-left px-6 py-4 hover:bg-sky-50 transition font-medium text-gray-800 flex items-center gap-3"
+                >
+                  Login
+                </button>
+              )}
               <button
                 onClick={() => { navigate("/about"); setDropdownOpen(false); }}
                 className="w-full text-left px-6 py-4 hover:bg-sky-50 transition font-medium text-gray-800 flex items-center gap-3"
@@ -67,10 +115,17 @@ export default function Home() {
         </div>
       </header>
 
+      {/* Backend message display - green box remains, text removed if empty */}
+      {/* Backend message display */}
+      <div className="">
+        {backendMessage}
+      </div>
+
+
       {/* Hero Section */}
       <section className="flex justify-center mt-12 px-8">
         <img
-          src="https://placehold.co/1400x500"
+          src="/src/assets/doctors.png"
           alt="Hero Banner"
           className="w-full max-w-7xl h-96 lg:h-[520px] object-cover rounded-3xl shadow-2xl"
         />
@@ -91,7 +146,7 @@ export default function Home() {
         {/* Consult a Doctor */}
         <div className="group">
           <img
-            src="https://placehold.co/300x250"
+            src="/src/assets/pexels-karola-g-4021769.jpg"
             alt="Consult a Doctor"
             className="w-full h-64 object-cover rounded-2xl shadow-xl group-hover:shadow-2xl transition"
           />
@@ -106,11 +161,14 @@ export default function Home() {
         {/* AI Symptom Checker */}
         <div className="group">
           <img
-            src="https://placehold.co/300x250"
+            src="/src/assets/pexels-tara-winstead-8849295.jpg"
             alt="AI Symptom Checker"
             className="w-full h-64 object-cover rounded-2xl shadow-xl group-hover:shadow-2xl transition"
           />
-          <button className="w-full mt-5 py-5 bg-sky-500 hover:bg-sky-600 text-white text-xl font-semibold rounded-2xl transition shadow-lg">
+          <button
+            onClick={() => navigate("/symptom-checker")}
+            className="w-full mt-5 py-5 bg-sky-500 hover:bg-sky-600 text-white text-xl font-semibold rounded-2xl transition shadow-lg"
+          >
             AI Symptom Checker
           </button>
         </div>
@@ -118,7 +176,7 @@ export default function Home() {
         {/* Order Medicines */}
         <div className="group">
           <img
-            src="https://placehold.co/300x250"
+            src="/src/assets/pexels-apasaric-7605733.jpg"
             alt="Order Medicines"
             className="w-full h-64 object-cover rounded-2xl shadow-xl group-hover:shadow-2xl transition"
           />
@@ -133,11 +191,14 @@ export default function Home() {
         {/* Emergency Ambulance */}
         <div className="group">
           <img
-            src="https://placehold.co/300x250"
+            src="/src/assets/pexels-rdne-6519847.jpg"
             alt="Emergency Ambulance"
             className="w-full h-64 object-cover rounded-2xl shadow-xl group-hover:shadow-2xl transition"
           />
-          <button className="w-full mt-5 py-5 bg-sky-500 hover:bg-sky-600 text-white text-xl font-semibold rounded-2xl transition shadow-lg">
+          <button
+            onClick={() => navigate("/ambulance")}
+            className="w-full mt-5 py-5 bg-sky-500 hover:bg-sky-600 text-white text-xl font-semibold rounded-2xl transition shadow-lg"
+          >
             Emergency Ambulance
           </button>
         </div>

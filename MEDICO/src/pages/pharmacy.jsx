@@ -1,136 +1,219 @@
-// src/pages/pharmacy.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function Pharmacy() {
   const navigate = useNavigate();
-  const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  const pharmacies = [
-    { name: "MedLife Pharmacy", location: "Andheri West, Mumbai" },
-    { name: "Apollo Pharmacy", location: "Bandra East, Mumbai" },
-    { name: "Wellness Forever", location: "Juhu, Mumbai" },
-    { name: "Guardian Pharmacy", location: "Powai, Mumbai" },
-    { name: "Noble Plus", location: "Malad West, Mumbai" },
-    { name: "HealthHub", location: "Goregaon East, Mumbai" },
-    { name: "CarePlus Pharmacy", location: "Kandivali, Mumbai" },
-    { name: "LifeCare Medicos", location: "Borivali West, Mumbai" },
-    { name: "Prime Chemist", location: "Dadar, Mumbai" },
-    { name: "Trust Pharmacy", location: "Chembur, Mumbai" },
-    { name: "City Medicos", location: "Vikhroli, Mumbai" },
-    { name: "Sunrise Pharmacy", location: "Thane West" },
+  // --------------------------
+  // Static pharmacies (old list)
+  // --------------------------
+  const staticPharmacies = [
+    {
+      name: "MedLife Pharmacy",
+      location: "Mirpur",
+      medicines: [
+        { name: "Paracetamol", price: 20 },
+        { name: "Napa Extra", price: 30 },
+        { name: "Ecosprin", price: 60 },
+      ],
+    },
+    {
+      name: "Apollo Pharmacy",
+      location: "Badda",
+      medicines: [
+        { name: "Azithromycin", price: 120 },
+        { name: "Antacid", price: 40 },
+        { name: "Cetrizine", price: 10 },
+      ],
+    },
+    {
+      name: "Wellness Forever",
+      location: "Uttara",
+      medicines: [
+        { name: "Vitamin C", price: 150 },
+        { name: "Zinc Tablets", price: 160 },
+        { name: "ORS", price: 25 },
+      ],
+    },
   ];
+
+  const [pharmacies, setPharmacies] = useState(staticPharmacies);
+  const [cartPharmacy, setCartPharmacy] = useState(null);
+  const [cartItems, setCartItems] = useState([]);
+
+  // --------------------------
+  // Fetch new medicines from backend
+  // --------------------------
+  useEffect(() => {
+    fetch("http://localhost:5001/api/medicines")
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          const newMedicines = data.medicines;
+
+          // Group new medicines by pharmacy
+          const grouped = {};
+          newMedicines.forEach(med => {
+            if (!grouped[med.pharmacy_name]) grouped[med.pharmacy_name] = [];
+            grouped[med.pharmacy_name].push({ name: med.name, price: med.price });
+          });
+
+          // Merge static and new medicines
+          const mergedPharmacies = [...staticPharmacies];
+
+          Object.keys(grouped).forEach(name => {
+            const existing = mergedPharmacies.find(p => p.name === name);
+            if (existing) {
+              // Add new medicines without duplicating
+              grouped[name].forEach(med => {
+                if (!existing.medicines.find(x => x.name === med.name)) {
+                  existing.medicines.push(med);
+                }
+              });
+            } else {
+              // Add completely new pharmacy
+              mergedPharmacies.push({
+                name,
+                location: "",
+                medicines: grouped[name]
+              });
+            }
+          });
+
+          setPharmacies(mergedPharmacies);
+        }
+      })
+      .catch(err => console.error("Fetch medicines error:", err));
+  }, []);
+
+  const addToCart = (pharmacy, medicine) => {
+    if (cartPharmacy && cartPharmacy.name !== pharmacy.name) {
+      alert("You can only order from one pharmacy at a time.");
+      return;
+    }
+    setCartPharmacy(pharmacy);
+    const existing = cartItems.find((item) => item.name === medicine.name);
+    if (existing) {
+      setCartItems(
+        cartItems.map((item) =>
+          item.name === medicine.name ? { ...item, quantity: item.quantity + 1 } : item
+        )
+      );
+    } else {
+      setCartItems([...cartItems, { ...medicine, quantity: 1 }]);
+    }
+  };
+
+  const removeFromCart = (name) => {
+    const newCart = cartItems.filter((item) => item.name !== name);
+    setCartItems(newCart);
+    if (newCart.length === 0) setCartPharmacy(null);
+  };
+
+  const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  const placeOrder = async () => {
+    if (!cartItems.length) {
+      alert("Cart is empty");
+      return;
+    }
+
+    try {
+      const userHeader = localStorage.getItem("user");
+      if (!userHeader) {
+        alert("You must log in first");
+        return;
+      }
+
+      const res = await fetch("http://localhost:5001/api/order-medicine", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "user": userHeader
+        },
+        body: JSON.stringify({
+          pharmacyName: cartPharmacy.name,
+          items: cartItems
+        }),
+      });
+
+      const data = await res.json();
+      console.log("Order response:", data);
+
+      if (data.success) {
+        alert("Order placed successfully!");
+        setCartItems([]);
+        setCartPharmacy(null);
+      } else {
+        alert("Error: " + data.message);
+      }
+    } catch (err) {
+      console.error("Place order error:", err);
+      alert("Server error");
+    }
+  };
 
   return (
     <div className="w-full min-h-screen bg-gray-50">
-      {/* EXACT SAME NAVBAR AS HOME PAGE */}
       <header className="w-full h-24 bg-sky-500 flex items-center px-10 justify-between relative">
-        {/* Logo */}
         <img
-          src="https://placehold.co/150x70"
+          src="/src/assets/login-banner.png"
           alt="MEDICO Logo"
-          className="w-36 h-16 rounded-3xl cursor-pointer"
+          className="w-36 h-16 rounded-3xl cursor-pointer object-contain bg-white p-2 shadow-lg"
           onClick={() => navigate("/")}
         />
-
-        {/* Desktop Navigation */}
-        <div className="hidden lg:flex items-center gap-10 text-xl text-black font-medium">
-          <button onClick={() => navigate("/")} className="hover:text-white transition">
-            Home
-          </button>
-          <button className="hover:text-white transition">Consultations</button>
-          <button className="hover:text-white transition">Medical History</button>
-          <button className="hover:text-white transition">About</button>
-        </div>
-
-        {/* Hamburger Menu */}
-        <div className="relative">
-          <button
-            onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-xl ring-4 ring-white hover:ring-sky-200 transition"
-          >
-            <div className="space-y-1">
-              <span className="block w-7 h-1 bg-sky-600 rounded-full"></span>
-              <span className="block w-7 h-1 bg-sky-600 rounded-full"></span>
-              <span className="block w-7 h-1 bg-sky-600 rounded-full"></span>
-            </div>
-          </button>
-
-          {dropdownOpen && (
-            <div className="absolute right-0 top-20 w-52 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50">
-              <button onClick={() => { navigate("/cart"); setDropdownOpen(false); }}
-                className="w-full text-left px-6 py-4 hover:bg-sky-50 transition font-medium text-gray-800">
-                Cart
-              </button>
-              <button onClick={() => { navigate("/login"); setDropdownOpen(false); }}
-                className="w-full text-left px-6 py-4 hover:bg-sky-50 transition font-medium text-gray-800">
-                Login
-              </button>
-              <button onClick={() => { navigate("/about"); setDropdownOpen(false); }}
-                className="w-full text-left px-6 py-4 hover:bg-sky-50 transition font-medium text-gray-800">
-                About
-              </button>
-            </div>
-          )}
-        </div>
       </header>
 
-      {/* Search Bar */}
-      <div className="max-w-4xl mx-auto mt-12 px-8">
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Search for medicines, pharmacies or location..."
-            className="w-full px-10 py-6 text-2xl text-gray-700 bg-gray-200 rounded-full focus:outline-none focus:ring-4 focus:ring-sky-300 shadow-lg placeholder-gray-500"
-          />
-          <svg className="w-8 h-8 absolute left-4 top-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        </div>
-      </div>
-
-      {/* Page Title */}
       <div className="text-center mt-16">
         <h1 className="text-5xl font-bold text-sky-600">Order Medicines</h1>
         <p className="text-xl text-gray-600 mt-4">Choose from trusted pharmacies near you</p>
       </div>
 
-      {/* Pharmacy Grid */}
-      <div className="max-w-7xl mx-auto px-8 mt-12 pb-16 pb-24">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+      <div className="max-w-7xl mx-auto px-8 mt-12 pb-24">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12">
           {pharmacies.map((pharmacy, index) => (
-            <div
-              key={index}
-              className="group bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-3 overflow-hidden"
-            >
-              {/* Pharmacy Image */}
-              <div className="h-64 bg-gradient-to-br from-sky-100 to-blue-200 relative overflow-hidden">
-                <img
-                  src={`https://placehold.co/300x250?text=${encodeURIComponent(pharmacy.name)}`}
-                  alt={pharmacy.name}
-                  className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
-                />
-                <div className="absolute inset-0 bg-black bg-opacity-20 group-hover:bg-opacity-30 transition"></div>
-              </div>
+            <div key={index} className="bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl transition">
+              <h3 className="text-3xl font-bold text-gray-800 text-center">{pharmacy.name}</h3>
+              <p className="text-lg text-gray-600 text-center">{pharmacy.location}</p>
 
-              {/* Info */}
-              <div className="p-6 text-center">
-                <h3 className="text-2xl font-bold text-gray-800">{pharmacy.name}</h3>
-                <p className="text-lg text-gray-600 mt-2 flex items-center justify-center gap-2">
-                  <svg className="w-5 h-5 text-sky-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                  </svg>
-                  {pharmacy.location}
-                </p>
+              <h4 className="text-xl font-semibold mt-6 mb-3">Medicines</h4>
 
-                <button className="mt-6 w-full py-4 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xl rounded-xl transition shadow-lg">
-                  View Store
-                </button>
-              </div>
+              {pharmacy.medicines.map((med, mIndex) => (
+                <div key={mIndex} className="flex justify-between bg-gray-100 p-3 rounded-xl mb-3">
+                  <span className="font-medium">{med.name}</span>
+                  <span className="font-bold">৳{med.price}</span>
+                  <button
+                    onClick={() => addToCart(pharmacy, med)}
+                    className="ml-4 px-4 py-1 bg-sky-600 text-white rounded-lg hover:bg-sky-700"
+                  >
+                    Add
+                  </button>
+                </div>
+              ))}
             </div>
           ))}
         </div>
       </div>
+
+      {cartItems.length > 0 && (
+        <div className="fixed bottom-0 right-0 w-96 bg-white shadow-xl p-6 rounded-tl-2xl rounded-bl-2xl">
+          <h2 className="text-2xl font-bold text-sky-600 mb-4">Your Cart</h2>
+          {cartItems.map((item, index) => (
+            <div key={index} className="flex justify-between mb-2">
+              <span>{item.name} × {item.quantity}</span>
+              <span>৳{item.price * item.quantity}</span>
+              <button onClick={() => removeFromCart(item.name)} className="text-red-500 font-medium ml-2">X</button>
+            </div>
+          ))}
+          <div className="flex justify-between font-bold text-lg mt-4">
+            <span>Total:</span>
+            <span>৳{totalPrice}</span>
+          </div>
+          <button onClick={placeOrder} className="w-full py-3 bg-green-600 text-white font-bold rounded-xl mt-4">
+            Confirm Order
+          </button>
+        </div>
+      )}
     </div>
   );
 }
