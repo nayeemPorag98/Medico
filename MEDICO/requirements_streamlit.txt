@@ -1,0 +1,16 @@
+streamlit
+groq
+python-dotenv
+langchain-groq
+langchain-core
+langchain-community
+sentence-transformers
+faiss-cpu
+speechrecognition
+pydub
+langdetect
+deep-translator
+requests
+PyPDF2
+langchain-text-splitters
+
